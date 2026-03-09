@@ -66,9 +66,26 @@ export default function App() {
     setLoginError("");
     const email = e.target.email.value;
     const password = e.target.password.value || "password";
+    
+    if (!email) {
+      setLoginError("Please enter an email address.");
+      return;
+    }
+
     const success = await login(email, password);
     if (!success) {
-      setLoginError("Invalid email or password. Please try again.");
+      setLoginError("Login failed. Please check your connection and try again.");
+    }
+  };
+
+  /**
+   * Skip login and use as guest
+   */
+  const handleSkipLogin = async () => {
+    setLoginError("");
+    const success = await login("guest@example.com", "guest-password");
+    if (!success) {
+      setLoginError("Failed to start guest session. Please try again.");
     }
   };
 
@@ -117,7 +134,7 @@ export default function App() {
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-200">
               <Receipt className="text-white w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-800">SpendAI</h1>
+            <h1 className="text-3xl font-bold text-slate-800">Expense-Tracker</h1>
             <p className="text-slate-500 mt-2">Your AI-powered expense companion</p>
           </div>
 
@@ -167,6 +184,13 @@ export default function App() {
           >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             Continue with Google
+          </button>
+
+          <button 
+            onClick={handleSkipLogin}
+            className="w-full mt-3 flex items-center justify-center gap-3 text-slate-500 hover:text-indigo-600 transition-all text-sm font-medium"
+          >
+            Skip login and use as Guest
           </button>
         </motion.div>
       </div>
@@ -218,8 +242,9 @@ export default function App() {
                 <Menu className="w-5 h-5" />
               </button>
               <div>
+                <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-0.5">Expense-Tracker</p>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-800">
-                  {activePage === "dashboard" && "Welcome, " + user.name}
+                  {activePage === "dashboard" && "Expense-Tracker Dashboard"}
                   {activePage === "expenses" && "Expense History"}
                   {activePage === "analytics" && "Spending Analytics"}
                   {activePage === "insights" && "AI Insights"}

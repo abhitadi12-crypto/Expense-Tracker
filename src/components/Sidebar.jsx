@@ -48,7 +48,7 @@ export const Sidebar = ({ activePage, setActivePage, onLogout, isOpen, setIsOpen
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
               <Receipt className="text-white w-6 h-6" />
             </div>
-            <span className="font-bold text-xl text-slate-800 tracking-tight">SpendAI</span>
+            <span className="font-bold text-xl text-slate-800 tracking-tight">Expense-Tracker</span>
           </div>
           <button onClick={() => setIsOpen(false)} className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
             <X className="w-5 h-5" />

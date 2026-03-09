@@ -60,7 +60,7 @@ export const VoiceInput = ({ onSave, onCancel }) => {
     <div className="max-w-2xl mx-auto mt-12">
       <Card className="text-center py-12">
         <h3 className="text-2xl font-bold text-slate-800 mb-2">Voice Input</h3>
-        <p className="text-slate-500 mb-8">Tell SpendAI about your expense</p>
+        <p className="text-slate-500 mb-8">Tell Expense-Tracker about your expense</p>
         
         {/* Recording Button with Animation */}
         <div className="relative flex justify-center mb-8">
