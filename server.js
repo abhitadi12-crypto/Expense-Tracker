@@ -16,7 +16,7 @@ const PORT = 3000;
 app.use(express.json());
 
 // Database Setup
-const db = new Database("expenses.db");
+const db = new Database(path.join(__dirname, "expenses.db"));
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,27 +37,43 @@ db.exec(`
   );
 `);
 
+// Seed guest user
+try {
+  const guestUser = db.prepare("SELECT * FROM users WHERE email = ?").get("guest@example.com");
+  if (!guestUser) {
+    db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run("guest@example.com", "guest-password", "Guest");
+    console.log("Guest user seeded");
+  }
+} catch (err) {
+  console.error("Failed to seed guest user:", err);
+}
+
 // API Routes
 app.post("/api/auth/login", (req, res) => {
-  const { email, password } = req.body;
-  console.log(`Login attempt for: ${email}`);
-  
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
-  }
-
   try {
+    const { email, password } = req.body;
+    console.log(`Login attempt for: ${email}`);
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
     // Simple mock auth for demo purposes
     let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
     if (!user) {
       console.log(`Creating new user for: ${email}`);
-      db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(email, password, email.split("@")[0]);
+      db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(email, password || "password", email.split("@")[0]);
       user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
     }
+    
+    if (!user) {
+      return res.status(500).json({ error: "Failed to create or find user" });
+    }
+
     res.json({ user: { id: user.id, email: user.email, name: user.name } });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Login route error:", err);
+    res.status(500).json({ error: "Internal server error", message: err.message });
   }
 });
 

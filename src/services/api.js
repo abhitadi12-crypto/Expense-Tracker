@@ -11,7 +11,11 @@ export const apiService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     });
-    return await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
+    }
+    return data;
   },
 
   /**
