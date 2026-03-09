@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Receipt, Plus, Menu } from "lucide-react";
 import { motion } from "motion/react";
 import { format } from "date-fns";
+
+// Services
+import { apiService } from "./services/api";
 
 // Components
 import { Sidebar } from "./components/Sidebar";
@@ -29,7 +32,7 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
 
   // Custom hooks for logic
-  const { user, loading: authLoading, login, logout, updateProfile } = useAuth();
+  const { user, loading: authLoading, login, loginWithGoogle, logout, updateProfile } = useAuth();
   const { 
     expenses, 
     insights, 
@@ -38,6 +41,22 @@ export default function App() {
     removeExpense,
     refreshInsights 
   } = useExpenses(user?.id);
+
+  // Listen for Google Auth success
+  useEffect(() => {
+    const handleMessage = (event) => {
+      // Validate origin
+      if (!event.origin.endsWith(".run.app") && !event.origin.includes("localhost")) {
+        return;
+      }
+      
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        loginWithGoogle(event.data.user);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loginWithGoogle]);
 
   /**
    * Handle login form submission
@@ -50,6 +69,19 @@ export default function App() {
     const success = await login(email, password);
     if (!success) {
       setLoginError("Invalid email or password. Please try again.");
+    }
+  };
+
+  /**
+   * Handle Google Login
+   */
+  const handleGoogleLogin = async () => {
+    try {
+      const { url } = await apiService.getGoogleAuthUrl();
+      window.open(url, 'google_oauth', 'width=600,height=700');
+    } catch (err) {
+      console.error("Google Auth URL error:", err);
+      setLoginError("Failed to start Google login. Please try again.");
     }
   };
 
@@ -129,7 +161,10 @@ export default function App() {
             <div className="flex-1 h-px bg-slate-200"></div>
           </div>
 
-          <button className="w-full mt-6 flex items-center justify-center gap-3 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all font-medium text-slate-700">
+          <button 
+            onClick={handleGoogleLogin}
+            className="w-full mt-6 flex items-center justify-center gap-3 border border-slate-200 py-3 rounded-xl hover:bg-slate-50 transition-all font-medium text-slate-700"
+          >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             Continue with Google
           </button>

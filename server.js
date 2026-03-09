@@ -40,13 +40,108 @@ db.exec(`
 // API Routes
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
-  // Simple mock auth for demo purposes
-  let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-  if (!user) {
-    db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(email, password, email.split("@")[0]);
-    user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  console.log(`Login attempt for: ${email}`);
+  
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
   }
-  res.json({ user: { id: user.id, email: user.email, name: user.name } });
+
+  try {
+    // Simple mock auth for demo purposes
+    let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+    if (!user) {
+      console.log(`Creating new user for: ${email}`);
+      db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(email, password, email.split("@")[0]);
+      user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+    }
+    res.json({ user: { id: user.id, email: user.email, name: user.name } });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Google OAuth Routes
+app.get("/api/auth/google/url", (req, res) => {
+  const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+  const options = {
+    redirect_uri: `${process.env.APP_URL}/api/auth/google/callback`,
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    access_type: "offline",
+    response_type: "code",
+    prompt: "consent",
+    scope: [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
+  };
+
+  const qs = new URLSearchParams(options);
+  res.json({ url: `${rootUrl}?${qs.toString()}` });
+});
+
+app.get("/api/auth/google/callback", async (req, res) => {
+  const code = req.query.code;
+  
+  if (!code) {
+    return res.status(400).send("No code provided");
+  }
+
+  try {
+    // Exchange code for tokens
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${process.env.APP_URL}/api/auth/google/callback`,
+        grant_type: "authorization_code",
+      }),
+    });
+
+    const tokens = await tokenResponse.json();
+    
+    if (tokens.error) {
+      console.error("Google token exchange error:", tokens);
+      return res.status(400).send("Failed to exchange code for tokens");
+    }
+
+    // Get user info
+    const userResponse = await fetch(`https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${tokens.access_token}`);
+    const googleUser = await userResponse.json();
+
+    // Find or create user in DB
+    let user = db.prepare("SELECT * FROM users WHERE email = ?").get(googleUser.email);
+    if (!user) {
+      db.prepare("INSERT INTO users (email, name) VALUES (?, ?)").run(googleUser.email, googleUser.name);
+      user = db.prepare("SELECT * FROM users WHERE email = ?").get(googleUser.email);
+    }
+
+    // Send success message to parent window and close popup
+    res.send(`
+      <html>
+        <body>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ 
+                type: 'OAUTH_AUTH_SUCCESS',
+                user: ${JSON.stringify({ id: user.id, email: user.email, name: user.name })}
+              }, '*');
+              window.close();
+            } else {
+              window.location.href = '/';
+            }
+          </script>
+          <p>Authentication successful. This window should close automatically.</p>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error("Google Auth Error:", err);
+    res.status(500).send("Authentication failed");
+  }
 });
 
 app.get("/api/expenses/:userId", (req, res) => {

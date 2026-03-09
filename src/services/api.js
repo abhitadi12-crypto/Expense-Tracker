@@ -15,6 +15,14 @@ export const apiService = {
   },
 
   /**
+   * Get Google Auth URL
+   */
+  getGoogleAuthUrl: async () => {
+    const res = await fetch("/api/auth/google/url");
+    return await res.json();
+  },
+
+  /**
    * Fetch all expenses for a user
    */
   getExpenses: async (userId) => {

@@ -36,6 +36,11 @@ export function useAuth() {
     }
   };
 
+  const loginWithGoogle = (userData) => {
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -60,6 +65,7 @@ export function useAuth() {
     user,
     loading,
     login,
+    loginWithGoogle,
     logout,
     updateProfile
   };
