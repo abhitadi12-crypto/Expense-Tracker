@@ -26,6 +26,7 @@ export default function App() {
   // State for navigation and sidebar
   const [activePage, setActivePage] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   // Custom hooks for logic
   const { user, loading: authLoading, login, logout, updateProfile } = useAuth();
@@ -43,9 +44,13 @@ export default function App() {
    */
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError("");
     const email = e.target.email.value;
     const password = e.target.password.value || "password";
-    await login(email, password);
+    const success = await login(email, password);
+    if (!success) {
+      setLoginError("Invalid email or password. Please try again.");
+    }
   };
 
   /**
@@ -83,6 +88,12 @@ export default function App() {
             <h1 className="text-3xl font-bold text-slate-800">SpendAI</h1>
             <p className="text-slate-500 mt-2">Your AI-powered expense companion</p>
           </div>
+
+          {loginError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl animate-in fade-in slide-in-from-top-2">
+              {loginError}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>

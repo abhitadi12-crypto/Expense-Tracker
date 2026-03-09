@@ -9,9 +9,14 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser && savedUser !== "undefined") {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (err) {
+      console.error("Failed to parse saved user:", err);
+      localStorage.removeItem("user");
     }
     setLoading(false);
   }, []);
@@ -19,7 +24,7 @@ export function useAuth() {
   const login = async (email, password) => {
     try {
       const data = await apiService.login(email, password);
-      if (data.user) {
+      if (data && data.user) {
         setUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
         return true;
