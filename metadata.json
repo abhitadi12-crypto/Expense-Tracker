@@ -1,0 +1,5 @@
+{
+  "name": "AI Voice Expense Tracker",
+  "description": "A modern fintech dashboard that tracks expenses using voice commands and AI parsing.",
+  "requestFramePermissions": ["microphone"]
+}
