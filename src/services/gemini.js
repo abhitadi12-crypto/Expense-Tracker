@@ -9,17 +9,22 @@ export const geminiService = {
    */
   parseExpense: async (text) => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API Key is not configured in the environment.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Extract expense details from this text: "${text}". 
+        contents: [{ parts: [{ text: `Extract expense details from this text: "${text}". 
         If the text is not an expense (e.g., a question, a greeting, or irrelevant), return an object with "is_expense": false.
         If it IS an expense, return a JSON object with: 
         "is_expense": true,
         "item": string, 
         "amount": number, 
         "category": one of (Food, Transport, Shopping, Bills, Entertainment, Health, Other), 
-        "date": YYYY-MM-DD format (assume today is ${new Date().toISOString().split('T')[0]} if not specified).`,
+        "date": YYYY-MM-DD format (assume today is ${new Date().toISOString().split('T')[0]} if not specified).` }] }],
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -36,13 +41,28 @@ export const geminiService = {
         },
       });
 
-      let jsonText = response.text || "{}";
+      const resultText = response.text;
+      if (!resultText) {
+        throw new Error("Empty response from AI model");
+      }
+
+      let jsonText = resultText.trim();
       // Clean up markdown code blocks if present
       if (jsonText.includes("```")) {
         jsonText = jsonText.replace(/```json/g, "").replace(/```/g, "").trim();
       }
       
-      return JSON.parse(jsonText);
+      try {
+        return JSON.parse(jsonText);
+      } catch (parseErr) {
+        console.error("JSON Parse Error. Raw text:", jsonText);
+        // Fallback: try to find JSON-like structure if parsing failed
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+        throw parseErr;
+      }
     } catch (err) {
       console.error("Gemini Parsing Error:", err);
       throw err;

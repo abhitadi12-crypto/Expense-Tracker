@@ -84,7 +84,16 @@ export const VoiceInput = ({ onSave, onCancel, isSaving, error }) => {
       }
     } catch (err) {
       console.error("AI Parsing Error:", err);
-      setRecognizedText(prev => prev + " (Error parsing expense. Please try again.)");
+      const errorMessage = err.message || "Unknown error";
+      if (errorMessage.includes("API Key")) {
+        setRecognizedText(prev => prev + " (Configuration Error: Gemini API Key is missing. Please check your settings in AI Studio.)");
+      } else if (errorMessage.includes("Empty response")) {
+        setRecognizedText(prev => prev + " (AI returned an empty response. Please try speaking more clearly or say something like 'I spent 500 on food'.)");
+      } else if (errorMessage.includes("Unexpected token") || errorMessage.includes("JSON")) {
+        setRecognizedText(prev => prev + " (AI response format error. Please try again.)");
+      } else {
+        setRecognizedText(prev => prev + ` (Parsing Error: ${errorMessage}. Please try again.)`);
+      }
     } finally {
       setIsParsing(false);
     }
