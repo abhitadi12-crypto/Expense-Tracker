@@ -50,6 +50,10 @@ export const apiService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(expenseData)
     });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.message || "Failed to save expense");
+    }
     return await res.json();
   },
 

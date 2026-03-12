@@ -36,7 +36,13 @@ export const geminiService = {
         },
       });
 
-      return JSON.parse(response.text || "{}");
+      let jsonText = response.text || "{}";
+      // Clean up markdown code blocks if present
+      if (jsonText.includes("```")) {
+        jsonText = jsonText.replace(/```json/g, "").replace(/```/g, "").trim();
+      }
+      
+      return JSON.parse(jsonText);
     } catch (err) {
       console.error("Gemini Parsing Error:", err);
       throw err;

@@ -26,13 +26,44 @@ export const VoiceInput = ({ onSave, onCancel }) => {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      setRecognizedText(text);
-      handleParse(text);
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      setRecognizedText("");
+      setParsedExpense(null);
     };
-    recognition.onend = () => setIsRecording(false);
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setRecognizedText(finalTranscript);
+        handleParse(finalTranscript);
+      } else if (interimTranscript) {
+        setRecognizedText(interimTranscript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech Recognition Error:", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
     recognition.start();
   };
 
@@ -40,17 +71,20 @@ export const VoiceInput = ({ onSave, onCancel }) => {
    * Use Gemini to parse the recognized text
    */
   const handleParse = async (text) => {
+    if (!text || text.trim().length < 3) return;
+    
     setIsParsing(true);
     setParsedExpense(null);
     try {
       const data = await geminiService.parseExpense(text);
-      if (data.is_expense) {
+      if (data && data.is_expense) {
         setParsedExpense(data);
       } else {
-        setRecognizedText(prev => prev + " (No expense detected)");
+        setRecognizedText(prev => prev + " (No expense detected. Try saying something like 'Spent 500 on dinner')");
       }
     } catch (err) {
       console.error("AI Parsing Error:", err);
+      setRecognizedText(prev => prev + " (Error parsing expense. Please try again.)");
     } finally {
       setIsParsing(false);
     }
