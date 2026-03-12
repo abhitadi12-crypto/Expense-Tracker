@@ -17,6 +17,8 @@ app.use(express.json());
 
 // Database Setup
 const db = new Database(path.join(__dirname, "expenses.db"));
+const memoryExpenses = []; // Fallback for read-only environments
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,21 +164,62 @@ app.get("/api/auth/google/callback", async (req, res) => {
 });
 
 app.get("/api/expenses/:userId", (req, res) => {
-  const expenses = db.prepare("SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC").all(req.params.userId);
-  res.json(expenses);
+  try {
+    const dbExpenses = db.prepare("SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC").all(req.params.userId);
+    const userMemoryExpenses = memoryExpenses.filter(e => e.user_id == req.params.userId);
+    // Combine and sort by date descending
+    const combined = [...dbExpenses, ...userMemoryExpenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(combined);
+  } catch (err) {
+    console.error("Failed to fetch expenses from DB:", err);
+    const userMemoryExpenses = memoryExpenses.filter(e => e.user_id == req.params.userId);
+    res.json(userMemoryExpenses);
+  }
 });
 
 app.post("/api/expenses", (req, res) => {
   const { user_id, item, amount, category, date, raw_text } = req.body;
-  const result = db.prepare(
-    "INSERT INTO expenses (user_id, item, amount, category, date, raw_text) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(user_id, item, amount, category, date, raw_text);
-  res.json({ id: result.lastInsertRowid });
+  const newExpense = { user_id, item, amount, category, date, raw_text };
+  
+  try {
+    console.log(`Adding expense for user ${user_id}: ${item} - ₹${amount}`);
+    
+    if (!user_id) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    const result = db.prepare(
+      "INSERT INTO expenses (user_id, item, amount, category, date, raw_text) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(user_id, item, amount, category, date, raw_text);
+    
+    res.json({ id: result.lastInsertRowid });
+  } catch (err) {
+    console.error("Failed to add expense to DB (using memory fallback):", err);
+    const id = Date.now();
+    memoryExpenses.push({ ...newExpense, id });
+    res.json({ id, message: "Added to session memory", warning: err.message });
+  }
 });
 
 app.delete("/api/expenses/:id", (req, res) => {
-  db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
-  res.sendStatus(200);
+  try {
+    const id = req.params.id;
+    db.prepare("DELETE FROM expenses WHERE id = ?").run(id);
+    // Also remove from memory if it exists there
+    const index = memoryExpenses.findIndex(e => e.id == id);
+    if (index !== -1) memoryExpenses.splice(index, 1);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Failed to delete expense from DB:", err);
+    const id = req.params.id;
+    const index = memoryExpenses.findIndex(e => e.id == id);
+    if (index !== -1) {
+      memoryExpenses.splice(index, 1);
+      res.sendStatus(200);
+    } else {
+      res.status(500).json({ error: "Failed to delete expense" });
+    }
+  }
 });
 
 app.put("/api/users/:id", (req, res) => {

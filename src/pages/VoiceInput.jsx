@@ -8,7 +8,7 @@ import { cn } from "../utils/cn";
 /**
  * VoiceInput Page - Add expenses using voice commands
  */
-export const VoiceInput = ({ onSave, onCancel }) => {
+export const VoiceInput = ({ onSave, onCancel, isSaving, error }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recognizedText, setRecognizedText] = useState("");
   const [parsedExpense, setParsedExpense] = useState(null);
@@ -123,6 +123,11 @@ export const VoiceInput = ({ onSave, onCancel }) => {
 
         {/* Status and Recognized Text */}
         <div className="min-h-[100px] mb-8">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
+              {error}
+            </div>
+          )}
           {isRecording && <p className="text-indigo-600 font-medium animate-pulse">Listening...</p>}
           {recognizedText && (
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 italic text-slate-700">
@@ -169,13 +174,16 @@ export const VoiceInput = ({ onSave, onCancel }) => {
             <div className="flex gap-3 mt-6">
               <button 
                 onClick={() => onSave(parsedExpense, recognizedText)}
-                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all"
+                disabled={isSaving}
+                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Confirm & Save
+                {isSaving && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                {isSaving ? "Saving..." : "Confirm & Save"}
               </button>
               <button 
                 onClick={() => setParsedExpense(null)}
-                className="px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-100 transition-all"
+                disabled={isSaving}
+                className="px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-100 transition-all disabled:opacity-50"
               >
                 Edit
               </button>

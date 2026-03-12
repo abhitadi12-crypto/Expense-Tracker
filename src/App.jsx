@@ -100,10 +100,22 @@ export default function App() {
   /**
    * Handle saving a new expense from voice input
    */
+  const [isSaving, setIsSaving] = useState(false);
   const handleSaveExpense = async (parsedData, rawText) => {
-    const success = await addExpense({ ...parsedData, raw_text: rawText });
-    if (success) {
-      setActivePage("dashboard");
+    setIsSaving(true);
+    setLoginError(""); // Reuse loginError for general errors or add a new one
+    try {
+      const success = await addExpense({ ...parsedData, raw_text: rawText });
+      if (success) {
+        setActivePage("dashboard");
+      } else {
+        setLoginError("Failed to save expense. Please try again.");
+      }
+    } catch (err) {
+      console.error("Save Expense Error:", err);
+      setLoginError("An error occurred while saving. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -208,7 +220,17 @@ export default function App() {
       case "settings":
         return <Settings user={user} onUpdate={updateProfile} />;
       case "voice":
-        return <VoiceInput onSave={handleSaveExpense} onCancel={() => setActivePage("dashboard")} />;
+        return (
+          <VoiceInput 
+            onSave={handleSaveExpense} 
+            onCancel={() => {
+              setLoginError("");
+              setActivePage("dashboard");
+            }} 
+            isSaving={isSaving}
+            error={loginError}
+          />
+        );
       default:
         return <Dashboard expenses={expenses} setActivePage={setActivePage} />;
     }
