@@ -10,8 +10,8 @@ export const geminiService = {
   parseExpense: async (text) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API Key is not configured in the environment.");
+      if (!apiKey || apiKey === "undefined" || apiKey === "") {
+        throw new Error("Gemini API Key is missing. Please make sure you have configured your API key in the AI Studio settings menu.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -65,6 +65,7 @@ export const geminiService = {
       }
     } catch (err) {
       console.error("Gemini Parsing Error:", err);
+      // If it's an auth error, it might contain "API key"
       throw err;
     }
   },
@@ -74,7 +75,11 @@ export const geminiService = {
    */
   generateInsights: async (expenses) => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "undefined" || apiKey === "") {
+        throw new Error("Gemini API Key is missing.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Based on these expenses: ${JSON.stringify(expenses)}, provide 3 short, actionable financial insights or observations. Return them as a JSON array of strings.`,
