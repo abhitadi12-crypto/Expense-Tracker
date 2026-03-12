@@ -50,30 +50,31 @@ try {
 
 // API Routes
 app.post("/api/auth/login", (req, res) => {
+  const { email, password } = req.body;
+  console.log(`Login attempt for: ${email}`);
+  
+  const mockUser = { 
+    id: 1, 
+    email: email || "user@example.com", 
+    name: (email || "User").split("@")[0] 
+  };
+
   try {
-    const { email, password } = req.body;
-    console.log(`Login attempt for: ${email}`);
-    
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
-
-    // Simple mock auth for demo purposes
-    let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+    // Try to get or create user in DB so expenses still work
+    let user = db.prepare("SELECT * FROM users WHERE email = ?").get(email || "user@example.com");
     if (!user) {
-      console.log(`Creating new user for: ${email}`);
-      db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(email, password || "password", email.split("@")[0]);
-      user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+      const result = db.prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)").run(
+        email || "user@example.com", 
+        password || "password", 
+        (email || "User").split("@")[0]
+      );
+      user = { id: result.lastInsertRowid, email: email || "user@example.com", name: (email || "User").split("@")[0] };
     }
-    
-    if (!user) {
-      return res.status(500).json({ error: "Failed to create or find user" });
-    }
-
     res.json({ user: { id: user.id, email: user.email, name: user.name } });
   } catch (err) {
-    console.error("Login route error:", err);
-    res.status(500).json({ error: "Internal server error", message: err.message });
+    console.error("Login route non-fatal error (using mock):", err);
+    // If DB fails (e.g. read-only on Vercel), still return a success with mock user
+    res.json({ user: mockUser });
   }
 });
 

@@ -64,14 +64,9 @@ export default function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError("");
-    const email = e.target.email.value;
+    const email = e.target.email.value || "user@example.com";
     const password = e.target.password.value || "password";
     
-    if (!email) {
-      setLoginError("Please enter an email address.");
-      return;
-    }
-
     const success = await login(email, password);
     if (!success) {
       setLoginError("Login failed. Please check your connection and try again.");
