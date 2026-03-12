@@ -85,8 +85,15 @@ export const VoiceInput = ({ onSave, onCancel, isSaving, error }) => {
     } catch (err) {
       console.error("AI Parsing Error:", err);
       const errorMessage = err.message || "Unknown error";
-      if (errorMessage.includes("API Key")) {
-        setRecognizedText(prev => prev + " (Configuration Error: Gemini API Key is missing. Please check your settings in AI Studio.)");
+      
+      if (errorMessage.includes("API Key is missing")) {
+        // Check if we can use the platform selector
+        if (window.aistudio && window.aistudio.openSelectKey) {
+          setRecognizedText(prev => prev + " (API Key missing. Click the 'Setup API Key' button below to configure it.)");
+          setParsedExpense({ _is_key_error: true });
+        } else {
+          setRecognizedText(prev => prev + " (Configuration Error: Gemini API Key is missing. Please add 'GEMINI_API_KEY' to the Settings menu in AI Studio.)");
+        }
       } else if (errorMessage.includes("Empty response")) {
         setRecognizedText(prev => prev + " (AI returned an empty response. Please try speaking more clearly or say something like 'I spent 500 on food'.)");
       } else if (errorMessage.includes("Unexpected token") || errorMessage.includes("JSON")) {
@@ -96,6 +103,16 @@ export const VoiceInput = ({ onSave, onCancel, isSaving, error }) => {
       }
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio && window.aistudio.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // After opening, we can't reliably know if they picked one immediately, 
+      // but the platform will restart the app or inject the key.
+      setParsedExpense(null);
+      setRecognizedText("API Key selector opened. Once you select a key, please try speaking your expense again.");
     }
   };
 
@@ -151,8 +168,26 @@ export const VoiceInput = ({ onSave, onCancel, isSaving, error }) => {
           )}
         </div>
 
-        {/* Parsed Expense Confirmation */}
-        {parsedExpense && (
+        {/* Parsed Expense Confirmation or Key Error */}
+        {parsedExpense && parsedExpense._is_key_error ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 p-6 rounded-2xl border border-red-100 text-left mb-8"
+          >
+            <h4 className="font-bold text-red-900 mb-2">API Key Required</h4>
+            <p className="text-red-700 text-sm mb-4">
+              To use voice features, you need to connect your Google Gemini API key. 
+              Click the button below to select a key from your Google Cloud project.
+            </p>
+            <button 
+              onClick={handleOpenKeySelector}
+              className="w-full bg-red-600 text-white py-2.5 rounded-xl font-semibold hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+            >
+              Setup API Key
+            </button>
+          </motion.div>
+        ) : parsedExpense && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

@@ -9,9 +9,9 @@ export const geminiService = {
    */
   parseExpense: async (text) => {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey || apiKey === "undefined" || apiKey === "") {
-        throw new Error("Gemini API Key is missing. Please make sure you have configured your API key in the AI Studio settings menu.");
+        throw new Error("Gemini API Key is missing. Please ensure you have added a variable named 'GEMINI_API_KEY' in the AI Studio Settings menu (Gear Icon -> Secrets/Environment Variables).");
       }
 
       const ai = new GoogleGenAI({ apiKey });
